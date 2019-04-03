@@ -21,81 +21,81 @@ namespace Plugin.BluetoothLE
         /// <param name="txCharacteristicUuid"></param>
         /// <param name="txNextBytes"></param>
         /// <returns></returns>
-        public static IObservable<Unit> RxFlow(this IDevice device,
-                                               Guid serviceUuid,
-                                               Guid rxCharacteristicUuid,
-                                               Guid txCharacteristicUuid,
-                                               byte[] txNextBytes,
-                                               Stream writeStream) => Observable.Create<Unit>(ob =>
-        {
-            var disp = new CompositeDisposable();
-            IDisposable flowLoop = null;
-            IGattCharacteristic tx = null;
-            IGattCharacteristic rx = null;
+        //public static IObservable<Unit> RxFlow(this IDevice device,
+        //                                       Guid serviceUuid,
+        //                                       Guid rxCharacteristicUuid,
+        //                                       Guid txCharacteristicUuid,
+        //                                       byte[] txNextBytes,
+        //                                       Stream writeStream) => Observable.Create<Unit>(ob =>
+        //{
+        //    var disp = new CompositeDisposable();
+        //    IDisposable flowLoop = null;
+        //    IGattCharacteristic tx = null;
+        //    IGattCharacteristic rx = null;
 
-            disp.Add(device
-                .WhenDisconnected()
-                .Subscribe(x =>
-                {
-                    tx = null;
-                    rx = null;
-                    flowLoop?.Dispose();
-                })
-            );
-            disp.Add(device
-                .WhenKnownCharacteristicsDiscovered(serviceUuid, txCharacteristicUuid, rxCharacteristicUuid)
-                .Subscribe(x =>
-                {
-                    if (x.Uuid.Equals(txCharacteristicUuid))
-                        tx = x;
+        //    disp.Add(device
+        //        .WhenDisconnected()
+        //        .Subscribe(x =>
+        //        {
+        //            tx = null;
+        //            rx = null;
+        //            flowLoop?.Dispose();
+        //        })
+        //    );
+        //    disp.Add(device
+        //        .WhenKnownCharacteristicsDiscovered(serviceUuid, txCharacteristicUuid, rxCharacteristicUuid)
+        //        .Subscribe(x =>
+        //        {
+        //            if (x.Uuid.Equals(txCharacteristicUuid))
+        //                tx = x;
 
-                    else if (x.Uuid.Equals(rxCharacteristicUuid))
-                        rx = x;
+        //            else if (x.Uuid.Equals(rxCharacteristicUuid))
+        //                rx = x;
 
-                    // while connected & not stopped
-                    if (tx != null && rx != null)
-                    {
-                        if (rx.CanNotifyOrIndicate())
-                        {
-                            flowLoop = rx
-                                .WhenNotificationReceived()
-                                .Subscribe(
-                                    y =>
-                                    {
-                                        writeStream.Write(y.Data, 0, y.Data.Length);
+        //            // while connected & not stopped
+        //            if (tx != null && rx != null)
+        //            {
+        //                if (rx.CanNotifyOrIndicate())
+        //                {
+        //                    flowLoop = rx
+        //                        .WhenNotificationReceived()
+        //                        .Subscribe(
+        //                            y =>
+        //                            {
+        //                                writeStream.Write(y.Data, 0, y.Data.Length);
 
-                                        // don't need to await this will progress stream
-                                        tx.Write(txNextBytes).Subscribe();
-                                        //ob.OnNext(Unit.Default);
-                                    },
-                                    ob.OnError
-                                );
-                        }
-                        else
-                        {
-                            // TODO: need state hooks so this keeps going like notification pattern
-                            flowLoop = Observable
-                                .While(
-                                    () => device.IsConnected() && !disp.IsDisposed,
-                                    Observable.FromAsync(async ct =>
-                                    {
-                                        await tx.Write(txNextBytes).ToTask(ct);
-                                        var result = await rx.Read().ToTask(ct);
-                                        writeStream.Write(result.Data, 0, result.Data.Length);
-                                    })
-                                )
-                                .Subscribe(_ => { }, ob.OnError);
-                        }
-                    }
-                })
-            );
+        //                                // don't need to await this will progress stream
+        //                                tx.Write(txNextBytes).Subscribe();
+        //                                //ob.OnNext(Unit.Default);
+        //                            },
+        //                            ob.OnError
+        //                        );
+        //                }
+        //                else
+        //                {
+        //                    // TODO: need state hooks so this keeps going like notification pattern
+        //                    flowLoop = Observable
+        //                        .While(
+        //                            () => device.IsConnected() && !disp.IsDisposed,
+        //                            Observable.FromAsync(async ct =>
+        //                            {
+        //                                await tx.Write(txNextBytes).ToTask(ct);
+        //                                var result = await rx.Read().ToTask(ct);
+        //                                writeStream.Write(result.Data, 0, result.Data.Length);
+        //                            })
+        //                        )
+        //                        .Subscribe(_ => { }, ob.OnError);
+        //                }
+        //            }
+        //        })
+        //    );
 
-            return () =>
-            {
-                disp.Dispose();
-                flowLoop?.Dispose();
-            };
-        });
+        //    return () =>
+        //    {
+        //        disp.Dispose();
+        //        flowLoop?.Dispose();
+        //    };
+        //});
 
 
         //public static IObservable<Unit> TxFlow()
@@ -118,9 +118,8 @@ namespace Plugin.BluetoothLE
         /// <param name="stream">The stream to send</param>
         /// <param name="reliableWrite">Use reliable write atomic writing if available (windows and android)</param>
         public static IObservable<BleWriteSegment> BlobWrite(this IGattCharacteristic ch, Stream stream, bool reliableWrite)
-            => Observable.Create<BleWriteSegment>(async ob =>
+            => Observable.Create<BleWriteSegment>(async (ob, cancellationToken) =>
             {
-                var cts = new CancellationTokenSource();
                 var trans = reliableWrite
                     ? ch.Service.Device.BeginReliableWriteTransaction()
                     : new VoidGattReliableWriteTransaction();
@@ -133,11 +132,11 @@ namespace Plugin.BluetoothLE
                     var pos = read;
                     var len = Convert.ToInt32(stream.Length);
 
-                    while (!cts.IsCancellationRequested && read > 0)
+                    while (!cancellationToken.IsCancellationRequested && read > 0)
                     {
                         await trans
                             .Write(ch, buffer)
-                            .ToTask(cts.Token)
+                            .ToTask(cancellationToken)
                             .ConfigureAwait(false);
 
                         //if (this.Value != buffer)
@@ -163,12 +162,6 @@ namespace Plugin.BluetoothLE
                     await trans.Commit();
                 }
                 ob.OnCompleted();
-
-                return () =>
-                {
-                    cts.Cancel();
-                    trans.Dispose();
-                };
             });
     }
 }

@@ -1,9 +1,12 @@
 # <img src="icon.png" width="71" height="71"/> ACR Reactive BluetoothLE Plugin
 Easy to use, cross platform, REACTIVE BluetoothLE Plugin for ALL platforms!
 
-[![NuGet](https://img.shields.io/nuget/v/Plugin.BluetoothLE.svg?maxAge=2592000)](https://www.nuget.org/packages/Plugin.BluetoothLE/)
-[Change Log - Sept 20, 2018](docs/changelog.md)
+## [SUPPORT THIS PROJECT](https://github.com/aritchie/home)
 
+[Change Log - November 17, 2018](docs/changelog.md)
+
+[![NuGet](https://img.shields.io/nuget/v/Plugin.BluetoothLE.svg?maxAge=2592000)](https://www.nuget.org/packages/Plugin.BluetoothLE/)
+[![Build status](https://dev.azure.com/allanritchie/Plugins/_apis/build/status/BLE)](https://dev.azure.com/allanritchie/Plugins/_build/latest?definitionId=0)
 
 ## PLATFORMS
 
@@ -238,7 +241,7 @@ Q. Why can't I disconnect devices selectively in the GATT server?
 
 Q. Why can't I configure the device name on Android?
 
-> Please read the [advertising docs](docs/server_advertising.md) on this
+> Please read the [advertising docs](docs/advertising.md) on this
 
 
 ## GENERAL RULES TO FOLLOW
